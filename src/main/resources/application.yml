@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: spring-poi # 应用名称
+  thymeleaf: # THYMELEAF (ThymeleafAutoConfiguration)
+    cache: true # 开启模板缓存（默认值： true ）
+    check-template: true # 检查模板是否存在，然后再呈现
+    check-template-location: true # 检查模板位置是否正确（默认值 :true ）
+    servlet:
+      content-type: text/html #Content-Type 的值（默认值： text/html ）
+    enabled: true # 开启 MVC Thymeleaf 视图解析（默认值： true ）
+    encoding: UTF-8 # 模板编码
+    excluded-view-names: # 要被排除在解析之外的视图名称列表，用逗号分隔
+    mode: HTML # 要运用于模板之上的模板模式。另见StandardTemplate-ModeHandlers( 默认值： HTML5)
+    prefix: classpath:/templates/ # 在构建 URL 时添加到视图名称前的前缀（默认值： classpath:/templates/ ）
+    suffix: .html # 在构建 URL 时添加到视图名称后的后缀（默认值： .html ）
+  servlet:
+    multipart:
+      max-file-size: 1GB
+      max-request-size: 2GB
+  datasource:
+    url: jdbc:mysql://localhost:3306/ums_testin_uat?autoReconnect=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai
+    username: dev
+    password: Dev@test
+    driver-class-name: com.mysql.jdbc.Driver
+  jackson:
+    locale: zh_CN
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+server:
+  port: 8080 # 应用服务 WEB 访问端口
+logging:
+  file:
+    name: ${spring.application.name}/console.log
+  pattern:
+    rolling-file-name: ${LOG_FILE}.%d{yyyy-MM-dd}.%i.log
+    # ANSI颜色支持，file的pattern从https://codecentric.github.io/spring-boot-admin/current/#logfile摘抄，不要使用console的pattern
+    file: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID}){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
+#  level:
+#    com.chinaums.perf.dao: TRACE

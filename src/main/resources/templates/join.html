@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>关联</title>
+</head>
+<body>
+<form th:action="@{/upload}" method="post" enctype="multipart/form-data">
+    <div style="padding: 5pt"><span>第一个文件：</span><input type="file"
+                                   accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                   name="first"></div>
+    <div style="padding: 5pt"><span>第二个文件：</span><input type="file"
+                                   accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                   name="second"></div>
+    <div style="padding: 5pt"><input type="reset" value="复位">
+        <input type="submit" value="上传"></div>
+</form>
+</body>
+</html>
