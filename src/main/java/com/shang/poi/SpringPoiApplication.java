@@ -65,7 +65,9 @@ public class SpringPoiApplication {
                     final WriteSheet sheet = EasyExcel.writerSheet(SHEET_NAME).build();
                     while (hasNextPage.get() || !RESULT_QUEUE.isEmpty()) {
                         final List<?> result = RESULT_QUEUE.poll(5, TimeUnit.SECONDS);
-                        writer.write(result, sheet);
+                        if (result != null) {
+                            writer.write(result, sheet);
+                        }
                     }
                     writer.finish();
                     finish.countDown();
