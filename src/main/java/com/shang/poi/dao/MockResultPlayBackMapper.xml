@@ -2,14 +2,15 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.shang.poi.dao.MockResultPlayBackMapper">
   <resultMap id="BaseResultMap" type="com.shang.poi.model.MockResultPlayBack">
-    <!--@mbg.generated generated on Mon Nov 15 17:01:14 CST 2021.-->
+    <!--@mbg.generated generated on Tue Nov 23 10:43:36 CST 2021.-->
     <!--@Table mock_result_play_back-->
     <id column="id" jdbcType="BIGINT" property="id" />
     <result column="batch_no" jdbcType="VARCHAR" property="batchNo" />
     <result column="diff_trans_key1" jdbcType="VARCHAR" property="diffTransKey1" />
+    <result column="find_key" jdbcType="VARCHAR" property="findKey" />
     <result column="mock_req_info" jdbcType="VARCHAR" property="mockReqInfo" />
     <result column="mock_resp_info" jdbcType="VARCHAR" property="mockRespInfo" />
-    <result column="result" jdbcType="LONGVARCHAR" property="result" />
+    <result column="result" jdbcType="VARCHAR" property="result" />
     <result column="result_comment" jdbcType="LONGVARCHAR" property="resultComment" />
     <result column="compare_flag" jdbcType="VARCHAR" property="compareFlag" />
     <result column="mock_req_time" jdbcType="TIMESTAMP" property="mockReqTime" />
@@ -21,12 +22,11 @@
     <result column="card_no" jdbcType="VARCHAR" property="cardNo" />
     <result column="flow_no" jdbcType="VARCHAR" property="flowNo" />
     <result column="msg_out1_line_name" jdbcType="VARCHAR" property="msgOut1LineName" />
-    <result column="extra_1" jdbcType="VARCHAR" property="extra1" />
   </resultMap>
   <sql id="Base_Column_List">
-    <!--@mbg.generated generated on Mon Nov 15 17:01:14 CST 2021.-->
-    id, batch_no, diff_trans_key1, mock_req_info, mock_resp_info, `result`, result_comment, 
-    compare_flag, mock_req_time, mock_resp_time, pos_method, msg_type, mrch_no, trmnl_no, 
-    card_no, flow_no, msg_out1_line_name, extra_1
+    <!--@mbg.generated generated on Tue Nov 23 10:43:36 CST 2021.-->
+    id, batch_no, diff_trans_key1, find_key, mock_req_info, mock_resp_info, `result`, 
+    result_comment, compare_flag, mock_req_time, mock_resp_time, pos_method, msg_type, 
+    mrch_no, trmnl_no, card_no, flow_no, msg_out1_line_name
   </sql>
 </mapper>

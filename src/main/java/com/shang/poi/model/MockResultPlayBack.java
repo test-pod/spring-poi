@@ -5,7 +5,7 @@ import javax.persistence.*;
 import lombok.Data;
 
 /**
-  * Created by shangwei2009@hotmail.com on 2021/11/15 17:01
+  * Created by shangwei2009@hotmail.com on 2021/11/23 10:43
   */
 
 /**
@@ -30,6 +30,9 @@ public class MockResultPlayBack {
      */
     @Column(name = "diff_trans_key1")
     private String diffTransKey1;
+
+    @Column(name = "find_key")
+    private String findKey;
 
     @Column(name = "mock_req_info")
     private String mockReqInfo;
@@ -90,10 +93,4 @@ public class MockResultPlayBack {
      */
     @Column(name = "msg_out1_line_name")
     private String msgOut1LineName;
-
-    /**
-     * 预留字段1
-     */
-    @Column(name = "extra_1")
-    private String extra1;
 }

@@ -25,5 +25,5 @@ public class PoiConfiguration {
     @Pattern(regexp = ".+\\.xlsx$")
     private String exportFile = LocalDateTime.now().format(FORMATTER) + ".xlsx";
     @Positive
-    private Integer pageSize = 1000;
+    private Integer pageSize = 10000;
 }

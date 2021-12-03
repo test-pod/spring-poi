@@ -22,6 +22,7 @@ spring:
     username: dev
     password: Test_2526@Center
     driver-class-name: com.mysql.jdbc.Driver
+    initialization-mode: never
   jackson:
     locale: zh_CN
     time-zone: Asia/Shanghai
@@ -38,4 +39,5 @@ logging:
 #  level:
 #    com.chinaums.perf.dao: TRACE
 poi:
-  batch-no: xxx
+  batch-no: d18eef92-5e89-4112-a413-44d929fba3c7
+  export-file: ${poi.batch-no}.xlsx

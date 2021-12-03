@@ -18,10 +18,12 @@ spring:
       max-file-size: 1GB
       max-request-size: 2GB
   datasource:
-    url: jdbc:mysql://localhost:3306/ums_testin_uat?autoReconnect=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai
-    username: dev
-    password: Dev@test
-    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:sqlite:${spring.application.name}/${spring.application.name}.db
+    driver-class-name: org.sqlite.JDBC
+    schema: classpath:schema.sql
+    username:
+    password:
+    initialization-mode: always
   jackson:
     locale: zh_CN
     time-zone: Asia/Shanghai

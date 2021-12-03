@@ -1,6 +1,5 @@
 package com.shang.poi.vo;
 
-import com.alibaba.excel.annotation.ExcelIgnore;
 import com.alibaba.excel.annotation.ExcelProperty;
 import lombok.Data;
 
@@ -27,6 +26,9 @@ public class MockResultPlayBackVo {
      */
     @ExcelProperty("diff_trans_key1")
     private String diffTransKey1;
+
+    @ExcelProperty("find_key")
+    private String findKey;
 
     @ExcelProperty("mock_req_info")
     private String mockReqInfo;
@@ -88,9 +90,4 @@ public class MockResultPlayBackVo {
     @ExcelProperty("msg_out1_line_name")
     private String msgOut1LineName;
 
-    /**
-     * 预留字段1
-     */
-    @ExcelIgnore
-    private String extra1;
 }
