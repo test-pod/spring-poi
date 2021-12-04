@@ -7,16 +7,15 @@ import com.shang.poi.pool.JdbcTemplatePool;
 import com.shang.poi.service.BlogService;
 import com.shang.poi.service.ConnectionConfigService;
 import com.zaxxer.hikari.HikariDataSource;
-import org.apache.calcite.config.Lex;
-import org.apache.calcite.sql.SqlLiteral;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
-import org.apache.calcite.sql.SqlOrderBy;
-import org.apache.calcite.sql.SqlSelect;
-import org.apache.calcite.sql.dialect.MysqlSqlDialect;
-import org.apache.calcite.sql.parser.SqlParseException;
-import org.apache.calcite.sql.parser.SqlParser;
-import org.apache.calcite.sql.parser.SqlParserPos;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.Limit;
+import net.sf.jsqlparser.statement.select.PlainSelect;
+import net.sf.jsqlparser.statement.select.Select;
+import net.sf.jsqlparser.statement.select.SelectExpressionItem;
+import net.sf.jsqlparser.statement.select.SelectItem;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
@@ -31,6 +30,7 @@ import javax.validation.Valid;
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,14 +82,14 @@ public class DaoController {
 
     private static final Boolean FAST_PAGE = false;
 
-    private static final SqlParser.Config CONFIG = SqlParser.config().withLex(Lex.MYSQL);
+    public static final String COUNT_ONE = "count(1)";
 
-    private static final SqlNode COUNT_ONE;
+    private static final List<SelectItem> COUNT_ONE_ITEMS;
 
     static {
         try {
-            COUNT_ONE = SqlParser.create("count(1)", CONFIG).parseExpression();
-        } catch (SqlParseException e) {
+            COUNT_ONE_ITEMS = Collections.singletonList(new SelectExpressionItem(CCJSqlParserUtil.parseExpression(COUNT_ONE)));
+        } catch (JSQLParserException e) {
             throw new RuntimeException(e);
         }
     }
@@ -101,68 +101,52 @@ public class DaoController {
             throw new RuntimeException("不存在的Id");
         }
         final String rawSql = StringUtils.trimTrailingCharacter(StringUtils.trimTrailingWhitespace(exportSqlDTO.getSql()), ';');
+        final JdbcTemplate jdbcTemplate = JdbcTemplatePool.get(byId.getId());
 
-        final SqlParser sqlParser = SqlParser.create(rawSql, CONFIG);
+        final Statement statement;
         try {
-            final SqlNode sqlNode = sqlParser.parseStmt();
-            switch (sqlNode.getKind()) {
-                // 只有select、where
-                case SELECT: {
-                    final SqlSelect sqlSelect = (SqlSelect) sqlNode;
-                    final SqlNodeList selectList = sqlSelect.getSelectList();
-                    sqlSelect.setSelectList(SqlNodeList.of(COUNT_ONE));
-                    final String sql = sqlSelect.toSqlString(MysqlSqlDialect.DEFAULT).toString();
-                    // 分页查
-                    final JdbcTemplate jdbcTemplate = JdbcTemplatePool.get(byId.getId());
-                    final Map<String, Object> countMap = jdbcTemplate.queryForMap(sql);
-                    final Long size = (Long) countMap.get(COUNT_ONE.toSqlString(MysqlSqlDialect.DEFAULT).toString());
-                    sqlSelect.setSelectList(selectList);
-                    new SqlOrderBy(SqlParserPos.ZERO, sqlSelect, SqlNodeList.EMPTY, SqlParser.create("0", CONFIG).parseExpression(), SqlParser.create(String.valueOf(PAGE_SIZE), CONFIG).parseExpression());
-                    break;
-                }
-                // 包含order by、limit
-                case ORDER_BY: {
-                    final SqlOrderBy sqlOrderBy = (SqlOrderBy) sqlNode;
-                    // limit的第二个参数不为空，则一定包含limit
-                    if (sqlOrderBy.fetch != null) {
-                        // 包含limit
-                        final SqlLiteral sqlLiteral = (SqlLiteral) sqlOrderBy.fetch;
-                        if (sqlLiteral.longValue(false) > PAGE_SIZE) {
-                            throw new RuntimeException("页大小不能超过" + PAGE_SIZE);
-                        }
-                        // 不分页直接查
-                    } else {
-                        // 不包含limit
-                        final SqlSelect sqlSelect = (SqlSelect) sqlOrderBy.query;
-                        // 分页查
-
-                    }
-                    break;
-                }
-                default:
-                    throw new RuntimeException("暂时只能处理Select");
+            statement = CCJSqlParserUtil.parse(rawSql);
+            if (!(statement instanceof Select)) {
+                throw new RuntimeException("暂时只能处理select");
             }
-
-        } catch (SqlParseException e) {
+        } catch (JSQLParserException e) {
             throw new RuntimeException("本系统不能处理该SQL语句", e);
         }
+        final Select select = (Select) statement;
 
-        final JdbcTemplate jdbcTemplate = JdbcTemplatePool.get(byId.getId());
-        final Map<String, Object> countMap = jdbcTemplate.queryForMap("select count(1) as `count` from (" + rawSql + ") as temp");
-        final Long size = (Long) countMap.get("count");
-        if (size <= PAGE_SIZE) {
+        final PlainSelect plainSelect = select.getSelectBody(PlainSelect.class);
+        final Limit limit = plainSelect.getLimit();
+        // 包含limit
+        if (limit != null) {
+            final LongValue rowCount = limit.getRowCount(LongValue.class);
+            if (rowCount.getValue() > PAGE_SIZE) {
+                throw new RuntimeException("页大小不能超过" + PAGE_SIZE);
+            }
+            // 不分页，直接查
             return jdbcTemplate.queryForList(rawSql);
-        } else {
+        }
+        // 不包含limit
+        else {
+            final List<SelectItem> selectItems = plainSelect.getSelectItems();
+            plainSelect.setSelectItems(COUNT_ONE_ITEMS);
+
+            final Map<String, Object> countMap = jdbcTemplate.queryForMap(select.toString());
+            // 恢复
+            plainSelect.setSelectItems(selectItems);
+            final Long size = (Long) countMap.get(COUNT_ONE);
             final long totalPage = totalPage(size);
+            // 分页查
+            // 普通分页
             if (!FAST_PAGE) {
                 for (int i = 0; i < totalPage; i++) {
                     final List<Map<String, Object>> list = jdbcTemplate.queryForList(String.format("%s limit %d, %d", rawSql, i * PAGE_SIZE, PAGE_SIZE));
                 }
-            } else {
-                final SqlParser.Config config = SqlParser.config().withLex(Lex.MYSQL);
-                final SqlParser parser = SqlParser.create(rawSql, config);
             }
-            return size;
+            // 快速分页
+            else {
+                plainSelect.getWhere();
+            }
+            return null;
         }
     }
 

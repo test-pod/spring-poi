@@ -31,7 +31,7 @@
         <joinery-dataframe.version>1.10</joinery-dataframe.version>
         <easyexcel.version>3.0.3</easyexcel.version>
         <mysql-connector-java.version>5.1.49</mysql-connector-java.version>
-        <calcite.version>1.28.0</calcite.version>
+        <jsqlparser.version>4.2</jsqlparser.version>
     </properties>
 
     <dependencies>
@@ -111,8 +111,8 @@
             <artifactId>easyexcel</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.calcite</groupId>
-            <artifactId>calcite-core</artifactId>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
         </dependency>
     </dependencies>
 
@@ -167,11 +167,11 @@
                 <scope>runtime</scope>
                 <version>${mysql-connector-java.version}</version>
             </dependency>
-            <!-- https://mvnrepository.com/artifact/org.apache.calcite/calcite-plus -->
+            <!-- https://mvnrepository.com/artifact/com.github.jsqlparser/jsqlparser -->
             <dependency>
-                <groupId>org.apache.calcite</groupId>
-                <artifactId>calcite-core</artifactId>
-                <version>${calcite.version}</version>
+                <groupId>com.github.jsqlparser</groupId>
+                <artifactId>jsqlparser</artifactId>
+                <version>${jsqlparser.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
