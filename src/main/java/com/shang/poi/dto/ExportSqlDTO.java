@@ -19,5 +19,5 @@ public class ExportSqlDTO {
     /**
      * 偏移的字段，一般为有序字段，用来快速分页，为空时使用普通分页
      */
-    private String offsetField;
+    private String offsetColumn;
 }
