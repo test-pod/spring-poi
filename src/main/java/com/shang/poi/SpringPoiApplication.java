@@ -53,7 +53,7 @@ public class SpringPoiApplication {
     @Resource(name = "jacksonObjectMapper")
     private ObjectMapper objectMapper;
 
-    @Bean
+//    @Bean
     public CommandLineRunner commandLineRunner() {
         return args -> {
             final CountDownLatch finish = new CountDownLatch(1);
