@@ -45,7 +45,7 @@ public class ConnectionController {
                 try {
                     final DatabaseConfig databaseConfig = objectMapper.readValue(connectionConfig.getConfig(), DatabaseConfig.class);
                     JdbcTemplatePool.create(connectionConfig.getId(), databaseConfig);
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     closed.add(connectionConfig.getId());
                 }
             }
