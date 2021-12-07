@@ -28,7 +28,9 @@ spring:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
 server:
-  port: 8080 # 应用服务 WEB 访问端口
+  port: 7280 # 应用服务 WEB 访问端口
+  servlet:
+    context-path: /component
 logging:
   file:
     name: ${spring.application.name}/console.log

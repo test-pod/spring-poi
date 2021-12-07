@@ -1,8 +1,10 @@
-create table if not exists blog
+create table if not exists connection_config
 (
     id      integer not null
-        constraint blog_pk
+        constraint connection_config_pk
             primary key autoincrement,
-    title   TEXT default '' not null,
-    content text default ''
+    name    text    not null,
+    config  text    not null,
+    running integer default 0 not null
 );
+

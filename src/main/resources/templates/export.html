@@ -4,18 +4,47 @@
     <meta charset="UTF-8">
     <title>导出</title>
     <script type="application/javascript" th:src="@{/webjars/jquery/3.6.0/jquery.js}"></script>
+    <script type="application/javascript">
+        $(function () {
+            /* 使用button时这个生效 */
+            $("#export").click(function () {
+                const data = {};
+                const text = $("#form_export").serializeArray();
+                $.each(text, function () {
+                    data[this.name] = this.value;
+                });
+                $.ajax({
+                    url: "/export",
+                    data: JSON.stringify(data),
+                    method: "post",
+                    contentType: "application/json;charset=UTF-8",
+                    success: function () {
+                        alert("success");
+                    }
+                })
+                return false;
+            });
+        });
+    </script>
 </head>
 <body>
 <div>
-    <form th:action="@{/upload}" method="post" enctype="multipart/form-data">
-        <div style="padding: 5pt"><span>第一个文件：</span><input type="file"
-                                                            accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                                            name="first"></div>
-        <div style="padding: 5pt"><span>第二个文件：</span><input type="file"
-                                                            accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                                            name="second"></div>
+    <form id="form_export" th:action="@{/export}" method="post">
+        <div style="padding: 5pt"><span>连接：</span><label>
+            <select name="id">
+                <option th:each="connection : ${connections}" th:text="${connection.name}" th:value="${connection.id}"></option>
+            </select>
+        </label></div>
+        <div style="padding: 5pt"><span>SQL：</span><label>
+            <textarea name="sql" style="height: 160pt; width: 480pt"></textarea>
+        </label></div>
+        <div style="padding: 5pt"><span>快速分页排序栏：</span><label>
+            <input name="offsetColumn" type="text">
+        </label></div>
         <div style="padding: 5pt"><input type="reset" value="复位">
-            <input type="submit" value="上传"></div>
+            <!--            <button id="export">导出</button>-->
+            <input type="submit" value="导出">
+        </div>
     </form>
 </div>
 </body>
