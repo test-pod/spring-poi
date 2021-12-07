@@ -152,6 +152,7 @@ public class ExportController {
             // 恢复
             plainSelect.setSelectItems(selectItems);
             final Long size = (Long) countMap.get(COUNT_ONE);
+            log.info("size: {}", size);
             final long totalPage = totalPage(size);
             // 分页查
             // 普通分页
@@ -245,14 +246,18 @@ public class ExportController {
                 if (!headInitialized.get()) {
                     final Map<String, Object> map = CollectionUtils.firstElement(result);
                     if (map != null) {
+                        // 有数据，添加头
                         final List<List<String>> head = map.keySet().stream().map(Collections::singletonList).collect(Collectors.toList());
                         builder.head(head);
                     }
+                    // 初始化writer
+                    writer = builder.build();
                     headInitialized.set(true);
                 }
-                writer = builder.build();
                 final List<List<Object>> collect = result.stream().map(e -> new ArrayList<>(e.values())).collect(Collectors.toList());
-                writer.write(collect, sheet);
+                if (writer != null) {
+                    writer.write(collect, sheet);
+                }
             }
         }
         if (writer != null) {
