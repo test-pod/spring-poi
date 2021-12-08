@@ -162,6 +162,10 @@ public class ExportController {
                         for (int i = 0; i < totalPage; i++) {
                             final List<Map<String, Object>> list = jdbcTemplate.queryForList(String.format("%s limit %d, %d", rawSql, i * PAGE_SIZE, PAGE_SIZE));
                             result_queue.put(list);
+                            if (list.size() < PAGE_SIZE) {
+                                // 避免select count
+                                break;
+                            }
                         }
                     } catch (InterruptedException e) {
                         log.error(e.getLocalizedMessage(), e);
@@ -222,6 +226,10 @@ public class ExportController {
                             result_queue.put(list);
                             final Map<String, Object> last = list.get(list.size() - 1);
                             last_up.set(Long.parseLong(String.valueOf(last.get(exportSqlDTO.getOffsetColumn()))));
+                            if (list.size() < PAGE_SIZE) {
+                                // 避免select count
+                                break;
+                            }
                         }
                     } catch (InterruptedException | JSQLParserException e) {
                         log.error(e.getLocalizedMessage(), e);
