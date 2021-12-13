@@ -63,9 +63,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ExportController {
 
+    // PAGE_SIZE << MAX_ROW
     private static final long PAGE_SIZE = 10000;
 
     public static final String COUNT_ONE = "count(1)";
+
+    private static final int MAX_ROW = 1000000;
 
     private static final List<SelectItem> COUNT_ONE_ITEMS;
 
@@ -247,7 +250,10 @@ public class ExportController {
         final AtomicBoolean headInitialized = new AtomicBoolean(false);
         ExcelWriter writer = null;
         final ExcelWriterBuilder builder = EasyExcel.write(response.getOutputStream()).registerConverter(timestampStringConverter);
-        final WriteSheet sheet = EasyExcel.writerSheet(SHEET_NAME).build();
+        final AtomicLong total = new AtomicLong(0); // 包含头
+        final AtomicLong total_sheet = new AtomicLong(1); // 默认1个
+        final AtomicBoolean hasHead = new AtomicBoolean(false); // 默认无
+        WriteSheet sheet = null;
         while (!queryEnd.get() || !result_queue.isEmpty()) {
             final List<Map<String, Object>> result = result_queue.poll(5, TimeUnit.SECONDS);
             if (result != null) {
@@ -257,15 +263,35 @@ public class ExportController {
                         // 有数据，添加头
                         final List<List<String>> head = map.keySet().stream().map(Collections::singletonList).collect(Collectors.toList());
                         builder.head(head);
+                        hasHead.set(true);
+                        total.addAndGet(1);
                     }
                     // 初始化writer
                     writer = builder.build();
+                    sheet = EasyExcel.writerSheet(SHEET_NAME + "_" + total_sheet.get()).sheetNo((int) total_sheet.get() - 1).build();
                     headInitialized.set(true);
                 }
-                final List<List<Object>> collect = result.stream().map(e -> new ArrayList<>(e.values())).collect(Collectors.toList());
-                if (writer != null) {
-                    writer.write(collect, sheet);
+                log.info("batch size: {}", result.size());
+
+                if (result.size() + total.get() > total_sheet.get() * MAX_ROW) {
+                    total_sheet.addAndGet(1); // 新增一页
+                    total.addAndGet(result.size() + (hasHead.get() ? 1 : 0));
+                    final long thisPageRows = total_sheet.get() * MAX_ROW - (result.size() + total.get());
+                    final List<ArrayList<Object>> thisPage = result.stream().map(e -> new ArrayList<>(e.values())).limit(thisPageRows).collect(Collectors.toList());
+                    final List<ArrayList<Object>> nextPage = result.stream().map(e -> new ArrayList<>(e.values())).skip(thisPageRows).collect(Collectors.toList());
+                    if (writer != null && sheet != null) {
+                        writer.write(thisPage, sheet);
+                        sheet = EasyExcel.writerSheet(SHEET_NAME + "_" + total_sheet.get()).sheetNo((int) total_sheet.get() - 1).build();
+                        writer.write(nextPage, sheet);
+                    }
+                } else {
+                    final List<List<Object>> collect = result.stream().map(e -> new ArrayList<>(e.values())).collect(Collectors.toList());
+                    total.addAndGet(result.size());
+                    if (writer != null && sheet != null) {
+                        writer.write(collect, sheet);
+                    }
                 }
+                log.info("total: {}", total.get());
             }
         }
         if (writer != null) {
