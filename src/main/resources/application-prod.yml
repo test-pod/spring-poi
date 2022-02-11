@@ -27,6 +27,8 @@ spring:
     locale: zh_CN
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
+  main:
+    web-application-type: none
 server:
   port: 7280 # 应用服务 WEB 访问端口
   servlet:
@@ -41,5 +43,6 @@ logging:
 #  level:
 #    com.chinaums.perf.dao: TRACE
 poi:
-  batch-no: d18eef92-5e89-4112-a413-44d929fba3c7
-  export-file: ${poi.batch-no}.xlsx
+#  batch-no: "2021-12-12 15:11:27"
+  batch-no: "2022-01-27 13:56:26"
+#  export-file: ${poi.batch-no}.xlsx

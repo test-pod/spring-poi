@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import tk.mybatis.mapper.entity.Example;
 
 import javax.annotation.Resource;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -26,6 +27,30 @@ public class MockResultPlayBackService {
         final List<MockResultPlayBack> mockResultPlayBacks = mockResultPlayBackMapper.selectByExample(example);
 //        final List<MockResultPlayBack> mockResultPlayBacks = mockResultPlayBackMapper.selectAll();
         return PageInfo.of(mockResultPlayBacks);
+    }
+
+/*    public PageInfo<MockResultPlayBack> listByBatchNoAndId(String batchNo, Long id, Integer pageSize) {
+        PageHelper.startPage(1, pageSize);
+        final Example example = new Example(MockResultPlayBack.class);
+        example.createCriteria()
+                .andEqualTo("batchNo", batchNo)
+                .andEqualTo("msgOut1LineName", "NETPAY")
+                .andGreaterThan("id", id)
+                .andLessThan("id", 7039576L);
+        example.orderBy("id").asc();
+        return PageInfo.of(mockResultPlayBackMapper.selectByExample(example));
+    }*/
+
+    public PageInfo<MockResultPlayBack> listByBatchNoAndId(String batchNo, Long id, Integer pageSize) {
+        PageHelper.startPage(1, pageSize);
+        final Example example = new Example(MockResultPlayBack.class);
+        example.createCriteria()
+                .andEqualTo("batchNo", batchNo)
+                .andIn("msgOut1LineName", Arrays.asList("CUPA", "CUPS"))
+                .andGreaterThan("id", id)
+                .andLessThan("id", 11595270L);
+        example.orderBy("id").asc();
+        return PageInfo.of(mockResultPlayBackMapper.selectByExample(example));
     }
 
 }

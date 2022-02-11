@@ -66,7 +66,7 @@ public class ExportController {
     // PAGE_SIZE << MAX_ROW
     private static final long PAGE_SIZE = 10000;
 
-    public static final String COUNT_ONE = "count(1)";
+    public static final String COUNT_ONE = "count(*)";
 
     private static final int MAX_ROW = 1000000;
 
@@ -87,7 +87,16 @@ public class ExportController {
 
     /* 负责执行客户端代码的线程池，根据《Java 开发手册》不可用 Executor 创建，有 OOM 的可能 */
     private static final ExecutorService POOL = new ThreadPoolExecutor(WORKER_THREAD, WORKER_THREAD,
-            0L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(WORKER_THREAD));
+            0L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(WORKER_THREAD),
+            // 自定义的RejectedExecutionHandler，当队列满时会阻塞SENDER.execute操作（添加任务），参考https://stackoverflow.com/questions/10353173/how-can-i-make-threadpoolexecutor-command-wait-if-theres-too-much-data-it-needs
+            (r, executor) -> {
+                // this will block if the queue is full
+                try {
+                    executor.getQueue().put(r);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
     // 以上队列最大任务容纳数量是WORKER_THREAD，当所有线程繁忙时，新的任务会触发异常
 
     @Resource
@@ -227,6 +236,7 @@ public class ExportController {
                             }
                             final List<Map<String, Object>> list = jdbcTemplate.queryForList(String.format("%s limit %d, %d", select, 0, PAGE_SIZE));
                             result_queue.put(list);
+                            // FIXME: 2022/1/25 注意可能有size=0的情况
                             final Map<String, Object> last = list.get(list.size() - 1);
                             last_up.set(Long.parseLong(String.valueOf(last.get(exportSqlDTO.getOffsetColumn()))));
                             if (list.size() < PAGE_SIZE) {

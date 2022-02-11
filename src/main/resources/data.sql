@@ -7,4 +7,4 @@ INSERT INTO connection_config (id, name, config, running) VALUES (2, '本地连�
 	"url": "jdbc:mysql://localhost:3306/?useSSL=false",
 	"username": "dev",
 	"password": "Dev@test"
-}', 1);
+}', 0);
