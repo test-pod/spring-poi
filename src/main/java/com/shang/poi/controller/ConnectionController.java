@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.validation.Validator;
 import java.util.ArrayList;
@@ -59,6 +60,11 @@ public class ConnectionController {
                 connectionConfigService.update(connectionConfig);
             }
         });
+    }
+
+    @PreDestroy
+    public void destroy() {
+        JdbcTemplatePool.destroy();
     }
 
     @GetMapping("/config")

@@ -61,6 +61,20 @@ public class JdbcTemplatePool {
         }
     }
 
+    public static synchronized void destroy() {
+        POOL.forEach((k, v) -> {
+            try {
+                final HikariDataSource dataSource = (HikariDataSource) v.getDataSource();
+                if (dataSource != null && !dataSource.isClosed()) {
+                    dataSource.close();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        POOL.clear();
+    }
+
     public static boolean isOnline(Integer id) {
         final JdbcTemplate template = POOL.get(id);
         if (template == null) {
