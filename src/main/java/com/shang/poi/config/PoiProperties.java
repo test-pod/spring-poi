@@ -17,7 +17,7 @@ import java.util.Locale;
 @ConfigurationProperties(prefix = "poi")
 @Data
 @Validated
-public class PoiConfiguration {
+public class PoiProperties {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss", Locale.CHINA);
 
     @NotBlank

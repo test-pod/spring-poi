@@ -1,6 +1,7 @@
 package com.shang.poi;
 
-import com.shang.poi.config.PoiConfiguration;
+import com.shang.poi.config.FileProperties;
+import com.shang.poi.config.PoiProperties;
 import com.shang.poi.service.UPSCSummaryService;
 import com.shang.poi.service.UPSQSummaryService;
 import org.springframework.boot.CommandLineRunner;
@@ -12,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 import javax.annotation.Resource;
 
 @SpringBootApplication
-@EnableConfigurationProperties(PoiConfiguration.class)
+@EnableConfigurationProperties({PoiProperties.class, FileProperties.class})
 public class SpringPoiApplication {
 
     public static void main(String[] args) {

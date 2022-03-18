@@ -3,7 +3,7 @@ package com.shang.poi.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageInfo;
-import com.shang.poi.config.PoiConfiguration;
+import com.shang.poi.config.PoiProperties;
 import com.shang.poi.model.Issue;
 import com.shang.poi.model.MockResultPlayBack;
 import org.springframework.stereotype.Service;
@@ -38,7 +38,7 @@ public class UPSQSummaryService {
     private MockResultPlayBackService mockResultPlayBackService;
 
     @Resource
-    private PoiConfiguration poiConfiguration;
+    private PoiProperties poiProperties;
 
     @Resource(name = "jacksonObjectMapper")
     private ObjectMapper objectMapper;
@@ -50,7 +50,7 @@ public class UPSQSummaryService {
             try {
                 final AtomicLong id = new AtomicLong(0);
                 do {
-                    final PageInfo<MockResultPlayBack> pageInfo = mockResultPlayBackService.listByBatchNoAndId(poiConfiguration.getBatchNo(), id.get(), poiConfiguration.getPageSize());
+                    final PageInfo<MockResultPlayBack> pageInfo = mockResultPlayBackService.listByBatchNoAndId(poiProperties.getBatchNo(), id.get(), poiProperties.getPageSize());
                     final List<MockResultPlayBack> mockResultPlayBacks = pageInfo.getList();
                     RESULT_QUEUE.put(mockResultPlayBacks);
                     id.set(mockResultPlayBacks.isEmpty() ? Long.MAX_VALUE : mockResultPlayBacks.get(mockResultPlayBacks.size() - 1).getId());
@@ -62,7 +62,7 @@ public class UPSQSummaryService {
         }).start();
         new Thread(() -> {
             try {
-//                    final ExcelWriter writer = EasyExcel.write(Paths.get(poiConfiguration.getExportFile()).toFile(), MockResultPlayBackVo.class).build();
+//                    final ExcelWriter writer = EasyExcel.write(Paths.get(poiProperties.getExportFile()).toFile(), MockResultPlayBackVo.class).build();
 //                    final WriteSheet sheet = EasyExcel.writerSheet(SHEET_NAME).build();
                 final HashMap<Issue, Long> map = new HashMap<>();
                 while (hasNextPage.get() || !RESULT_QUEUE.isEmpty()) {

@@ -44,3 +44,6 @@ logging:
 #    com.chinaums.perf.dao: TRACE
 poi:
   batch-no: xxx
+file:
+  xlsx-path: ${spring.application.name}/xlsx
+  max-history: 10

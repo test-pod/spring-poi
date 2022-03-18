@@ -46,3 +46,6 @@ poi:
 #  batch-no: "2021-12-12 15:11:27"
   batch-no: "2022-01-27 13:56:26"
 #  export-file: ${poi.batch-no}.xlsx
+file:
+  xlsx-path: ${spring.application.name}/xlsx
+  max-history: 10

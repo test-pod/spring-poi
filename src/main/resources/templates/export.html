@@ -7,21 +7,48 @@
     <script type="application/javascript">
         $(function () {
             /* 使用button时这个生效 */
-            $("#export").click(function () {
+            $("#start").click(function () {
                 const data = {};
                 const text = $("#form_export").serializeArray();
                 $.each(text, function () {
                     data[this.name] = this.value;
                 });
                 $.ajax({
-                    url: "/export",
+                    url: "start",
                     data: JSON.stringify(data),
+                    method: "post",
+                    contentType: "application/json;charset=UTF-8",
+                    success: function () {
+                        const source = new EventSource("sse");
+                        source.onmessage = function (event) {
+                            console.log(JSON.parse(event.data));
+                            logging.val(logging.val() + JSON.parse(event.data).text + "\n");
+                            // https://stackoverflow.com/questions/8467368/scroll-to-down-in-textarea-with-jquery
+                            if (logging.length)
+                                logging.scrollTop(logging[0].scrollHeight - logging.height());
+                        };
+                        source.onerror = function (event) {
+                            $("#file-list-div").load("fragment");
+                            source.close();
+                        }
+                    }
+                });
+                return false;
+            });
+            $("#stop").click(function () {
+                $.ajax({
+                    url: "stop",
                     method: "post",
                     contentType: "application/json;charset=UTF-8",
                     success: function () {
                         alert("success");
                     }
-                })
+                });
+                return false;
+            });
+            const logging = $("#logging");
+            $("#clear_log").click(function () {
+                logging.val("");
                 return false;
             });
         });
@@ -29,23 +56,35 @@
 </head>
 <body>
 <div>
-    <form id="form_export" th:action="@{/export}" method="post">
+    <form id="form_export" th:action="@{/export/start}" method="post">
         <div style="padding: 5pt"><span>连接：</span><label>
             <select name="id">
                 <option th:each="connection : ${connections}" th:text="${connection.name}" th:value="${connection.id}"></option>
             </select>
         </label></div>
-        <div style="padding: 5pt"><span>SQL：</span><label>
-            <textarea name="sql" style="height: 160pt; width: 480pt"></textarea>
+        <div style="padding: 5pt; display: flex"><span>SQL：</span><label style="padding: 5pt">
+            <textarea name="sql" style="height: 240pt; width: 480pt; min-height: 240pt; min-width: 480pt"></textarea>
+        </label><label style="padding: 5pt">
+            <textarea id="logging" style="height: 240pt; width: 480pt; min-height: 240pt; min-width: 480pt" readonly="readonly"></textarea>
         </label></div>
         <div style="padding: 5pt"><span>快速分页排序栏：</span><label>
             <input name="offsetColumn" type="text">
         </label></div>
-        <div style="padding: 5pt"><input type="reset" value="复位">
-            <!--            <button id="export">导出</button>-->
-            <input type="submit" value="导出">
+        <div style="padding: 5pt">
+            <button type="reset">复位</button>
+            <button id="start">导出</button>
+<!--            <input type="submit" value="导出">-->
+            <button id="stop">停止</button>
+            <button id="clear_log">清空日志</button>
         </div>
     </form>
+    <div id="file-list-div">
+        <ul th:fragment="file-list">
+            <li th:each="file : ${files}">
+                <a th:text="${file.name}" th:href="${file.url}"></a>
+            </li>
+        </ul>
+    </div>
 </div>
 </body>
 </html>

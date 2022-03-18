@@ -3,7 +3,7 @@ package com.shang.poi.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageInfo;
-import com.shang.poi.config.PoiConfiguration;
+import com.shang.poi.config.PoiProperties;
 import com.shang.poi.model.Count;
 import com.shang.poi.model.Issue;
 import com.shang.poi.model.MockResultPlayBack;
@@ -41,7 +41,7 @@ public class UPSCSummaryService {
     private MockResultPlayBackService mockResultPlayBackService;
 
     @Resource
-    private PoiConfiguration poiConfiguration;
+    private PoiProperties poiProperties;
 
     @Resource(name = "jacksonObjectMapper")
     private ObjectMapper objectMapper;
@@ -53,7 +53,7 @@ public class UPSCSummaryService {
             try {
                 final AtomicLong id = new AtomicLong(11423003L);
                 do {
-                    final PageInfo<MockResultPlayBack> pageInfo = mockResultPlayBackService.listByBatchNoAndId(poiConfiguration.getBatchNo(), id.get(), poiConfiguration.getPageSize());
+                    final PageInfo<MockResultPlayBack> pageInfo = mockResultPlayBackService.listByBatchNoAndId(poiProperties.getBatchNo(), id.get(), poiProperties.getPageSize());
                     final List<MockResultPlayBack> mockResultPlayBacks = pageInfo.getList();
                     RESULT_QUEUE.put(mockResultPlayBacks);
                     id.set(mockResultPlayBacks.isEmpty() ? Long.MAX_VALUE : mockResultPlayBacks.get(mockResultPlayBacks.size() - 1).getId());
