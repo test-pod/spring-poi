@@ -145,10 +145,12 @@ public class ExportController {
                     } catch (IOException | InterruptedException ignored) {
                     } finally {
                         sseEmitter.complete();
+                        session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
                     }
                 });
             } else {
                 sseEmitter.complete();
+                session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
             }
         });
         return sseEmitter;
