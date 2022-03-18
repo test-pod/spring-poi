@@ -14,12 +14,12 @@
                     data[this.name] = this.value;
                 });
                 $.ajax({
-                    url: "start",
+                    url: "export/start",
                     data: JSON.stringify(data),
                     method: "post",
                     contentType: "application/json;charset=UTF-8",
                     success: function () {
-                        const source = new EventSource("sse");
+                        const source = new EventSource("export/sse");
                         source.onmessage = function (event) {
                             console.log(JSON.parse(event.data));
                             logging.val(logging.val() + JSON.parse(event.data).text + "\n");
@@ -28,7 +28,7 @@
                                 logging.scrollTop(logging[0].scrollHeight - logging.height());
                         };
                         source.onerror = function (event) {
-                            $("#file-list-div").load("fragment");
+                            $("#file-list-div").load("export/fragment");
                             source.close();
                         }
                     }
@@ -37,7 +37,7 @@
             });
             $("#stop").click(function () {
                 $.ajax({
-                    url: "stop",
+                    url: "export/stop",
                     method: "post",
                     contentType: "application/json;charset=UTF-8",
                     success: function () {

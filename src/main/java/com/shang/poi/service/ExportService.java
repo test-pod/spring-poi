@@ -118,11 +118,11 @@ public class ExportService {
             try {
                 statement = CCJSqlParserUtil.parse(rawSql);
                 if (!(statement instanceof Select)) {
-                    enqueue(logging, new Msg(true, "暂时只能处理select"));
+                    enqueue(logging, new Msg(false, "暂时只能处理select"));
                     throw new RuntimeException("暂时只能处理select");
                 }
             } catch (JSQLParserException e) {
-                enqueue(logging, new Msg(true, "本系统不能处理该SQL语句"));
+                enqueue(logging, new Msg(false, "本系统不能处理该SQL语句"));
                 throw new RuntimeException("本系统不能处理该SQL语句", e);
             }
             final Select select = (Select) statement;
@@ -133,13 +133,14 @@ public class ExportService {
             if (limit != null) {
                 final LongValue rowCount = limit.getRowCount(LongValue.class);
                 if (rowCount.getValue() > PAGE_SIZE * 10) {
-                    enqueue(logging, new Msg(true, "页大小不能超过" + (PAGE_SIZE * 10)));
+                    enqueue(logging, new Msg(false, "页大小不能超过" + (PAGE_SIZE * 10)));
                     throw new RuntimeException("页大小不能超过" + (PAGE_SIZE * 10));
                 }
                 // 不分页，直接查
                 POOL.submit(() -> {
-                    final List<Map<String, Object>> list = jdbcTemplate.queryForList(rawSql);
                     try {
+                        enqueue(logging, new Msg("SQL:\t\t" + rawSql));
+                        final List<Map<String, Object>> list = jdbcTemplate.queryForList(rawSql);
                         result_queue.put(list);
                     } catch (InterruptedException e) {
                         log.error(e.getLocalizedMessage(), e);
@@ -154,6 +155,7 @@ public class ExportService {
                 // 修改
                 plainSelect.setSelectItems(COUNT_ONE_ITEMS);
 
+                enqueue(logging, new Msg("SQL:\t\t" + select));
                 final Map<String, Object> countMap = jdbcTemplate.queryForMap(select.toString());
                 // 恢复
                 plainSelect.setSelectItems(selectItems);
@@ -172,7 +174,9 @@ public class ExportService {
                                 }
                                 enqueue(logging, new Msg(String.format("查询第\t\t%s页", i + 1)));
                                 log.info("查询第{}页", i + 1);
-                                final List<Map<String, Object>> list = jdbcTemplate.queryForList(String.format("%s limit %d, %d", rawSql, i * PAGE_SIZE, PAGE_SIZE));
+                                final String sql = String.format("%s limit %d, %d", rawSql, i * PAGE_SIZE, PAGE_SIZE);
+                                enqueue(logging, new Msg("SQL:\t\t" + sql));
+                                final List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
                                 result_queue.put(list);
                                 if (list.size() < PAGE_SIZE) {
                                     // 避免select count
@@ -239,7 +243,9 @@ public class ExportService {
                                         plainSelect.setWhere(CCJSqlParserUtil.parseExpression("id > " + last_up.get()));
                                     }
                                 }
-                                final List<Map<String, Object>> list = jdbcTemplate.queryForList(String.format("%s limit %d, %d", select, 0, PAGE_SIZE));
+                                final String sql = String.format("%s limit %d, %d", select, 0, PAGE_SIZE);
+                                enqueue(logging, new Msg("SQL:\t\t" + sql));
+                                final List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
                                 result_queue.put(list);
                                 // FIXME: 2022/1/25 注意可能有size=0的情况
                                 final Map<String, Object> last = list.get(list.size() - 1);
