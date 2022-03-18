@@ -100,7 +100,8 @@ public class ExportController {
             if (byId == null) {
                 throw new RuntimeException("不存在的Id");
             }
-            CompletableFuture.runAsync(() -> exportService.export(session, exportSqlDTO, byId), POOL);
+            CompletableFuture.runAsync(() -> exportService.export(session, exportSqlDTO, byId), POOL)
+                    .whenComplete((unused, throwable) -> log.info(throwable.getLocalizedMessage(), throwable));
         }
     }
 
