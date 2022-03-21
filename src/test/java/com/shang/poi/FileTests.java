@@ -14,6 +14,12 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,5 +60,36 @@ public class FileTests {
                 System.out.println(matcher.group(i));
             }
         }
+    }
+
+    @Test
+    public void test03() throws InterruptedException {
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(3, 5, 3, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(3));
+        /* 信号量 */
+        final Semaphore semaphore = new Semaphore(0);
+        final Future<?> future = pool.submit(() -> {
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            } finally {
+                System.out.println(LocalDateTime.now());
+            }
+        });
+        new Thread(() -> {
+            try {
+                Thread.sleep(5000);
+                System.out.println("cancel");
+                // CompletableFuture无效
+                future.cancel(true);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+        final CountDownLatch latch = new CountDownLatch(1);
+        latch.await();
     }
 }

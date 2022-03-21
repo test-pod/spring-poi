@@ -93,15 +93,38 @@ public class ExportController {
 
     @PostMapping("/start")
     @ResponseBody
+    @SuppressWarnings("unchecked")
     public void start(HttpSession session, @RequestBody @Valid ExportSqlDTO exportSqlDTO) {
-        final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
-        if (running == null || !running.get()) {
-            final ConnectionConfig byId = connectionConfigService.getById(exportSqlDTO.getId());
-            if (byId == null) {
-                throw new RuntimeException("不存在的Id");
+        synchronized (session) {
+            if (session.getAttribute(Constants.ATTR_NAME_RUNNING) == null) {
+                final AtomicBoolean aExit = new AtomicBoolean(false);
+                final AtomicBoolean aRunning = new AtomicBoolean(false);
+                final ArrayBlockingQueue<Msg> aLogging = new ArrayBlockingQueue<>(1000);
+                session.setAttribute(Constants.ATTR_NAME_EXIT, aExit);
+                session.setAttribute(Constants.ATTR_NAME_RUNNING, aRunning);
+                session.setAttribute(Constants.ATTR_NAME_LOG, aLogging);
             }
-            CompletableFuture.runAsync(() -> exportService.export(session, exportSqlDTO, byId), POOL)
-                    .whenComplete((unused, throwable) -> log.info(throwable.getLocalizedMessage(), throwable));
+            final AtomicBoolean exit = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_EXIT);
+            final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
+            final ArrayBlockingQueue<Msg> logging = (ArrayBlockingQueue<Msg>) session.getAttribute(Constants.ATTR_NAME_LOG);
+            if (!running.get()) {
+                final ConnectionConfig byId = connectionConfigService.getById(exportSqlDTO.getId());
+                if (byId == null) {
+                    throw new RuntimeException("不存在的Id");
+                }
+                CompletableFuture.runAsync(() -> {
+                            running.set(true);
+                            exit.set(false);
+                            exportService.export(exportSqlDTO, byId, exit, logging);
+                        }, POOL)
+                        .whenComplete((unused, throwable) -> {
+                            if (throwable != null) {
+                                log.info(throwable.getLocalizedMessage(), throwable);
+                            }
+                            running.set(false);
+                            exit.set(true);
+                        });
+            }
         }
     }
 
@@ -111,7 +134,6 @@ public class ExportController {
         final AtomicBoolean exit = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_EXIT);
         if (exit != null) {
             exit.set(true);
-            session.removeAttribute(Constants.ATTR_NAME_EXIT);
         }
     }
 
@@ -127,11 +149,10 @@ public class ExportController {
             log.error(throwable.getLocalizedMessage(), throwable);
             sseEmitter.completeWithError(throwable);
         });
-        final ArrayBlockingQueue<Msg> logging = (ArrayBlockingQueue<Msg>) session.getAttribute(Constants.ATTR_NAME_LOG);
-        final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
-        withLock(() -> {
-            final Object oneClient = session.getAttribute(Constants.ATTR_NAME_ONE_CLIENT);
-            if (oneClient == null) {
+        synchronized (session) {
+            final ArrayBlockingQueue<Msg> logging = (ArrayBlockingQueue<Msg>) session.getAttribute(Constants.ATTR_NAME_LOG);
+            final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
+            if (session.getAttribute(Constants.ATTR_NAME_ONE_CLIENT) == null) {
                 session.setAttribute(Constants.ATTR_NAME_ONE_CLIENT, Constants.ATTR_NAME_ONE_CLIENT);
                 CompletableFuture.runAsync(() -> {
                     try {
@@ -143,17 +164,22 @@ public class ExportController {
                                 }
                             }
                         }
-                    } catch (IOException | InterruptedException ignored) {
-                    } finally {
-                        sseEmitter.complete();
-                        session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
+                    } catch (IOException | InterruptedException e) {
+                        throw new RuntimeException(e);
                     }
+                }).whenComplete((unused, throwable) -> {
+                    if (throwable != null) {
+                        log.error(throwable.getLocalizedMessage(), throwable);
+                    }
+                    sseEmitter.complete();
+                    logging.clear();
+                    session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
                 });
             } else {
                 sseEmitter.complete();
                 session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
             }
-        });
+        }
         return sseEmitter;
     }
 
@@ -167,15 +193,6 @@ public class ExportController {
                     return exportFileVO;
                 })
                 .collect(Collectors.toList()));
-    }
-
-    private void withLock(Runnable runnable) {
-        LOCK.lock();
-        try {
-            runnable.run();
-        } finally {
-            LOCK.unlock();
-        }
     }
 
 }

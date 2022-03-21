@@ -4,7 +4,6 @@ import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.builder.ExcelWriterBuilder;
 import com.alibaba.excel.write.metadata.WriteSheet;
-import com.shang.poi.common.Constants;
 import com.shang.poi.config.TimestampStringConverter;
 import com.shang.poi.dto.ExportSqlDTO;
 import com.shang.poi.model.ConnectionConfig;
@@ -31,7 +30,6 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -97,23 +95,16 @@ public class ExportService {
     @Resource
     private StorageService storageService;
 
-    public void export(HttpSession session, ExportSqlDTO exportSqlDTO, ConnectionConfig config) {
+    public void export(ExportSqlDTO exportSqlDTO, ConnectionConfig config, AtomicBoolean exit, ArrayBlockingQueue<Msg> logging) {
         final ArrayBlockingQueue<List<Map<String, Object>>> result_queue = new ArrayBlockingQueue<>(16);
         final AtomicBoolean queryEnd = new AtomicBoolean(false);
         final String rawSql = StringUtils.trimTrailingCharacter(StringUtils.trimTrailingWhitespace(exportSqlDTO.getSql()), ';');
         final JdbcTemplate jdbcTemplate = JdbcTemplatePool.get(config.getId());
 
-        final AtomicBoolean exit = new AtomicBoolean(false);
-        final AtomicBoolean running = new AtomicBoolean(true);
-        final ArrayBlockingQueue<Msg> logging = new ArrayBlockingQueue<>(1000);
-
         final Path exportFile = storageService.generate();
         ExcelWriter writer = null;
         Path tempXlsx = null;
         try {
-            session.setAttribute(Constants.ATTR_NAME_EXIT, exit);
-            session.setAttribute(Constants.ATTR_NAME_RUNNING, running);
-            session.setAttribute(Constants.ATTR_NAME_LOG, logging);
             final Statement statement;
             try {
                 statement = CCJSqlParserUtil.parse(rawSql);
@@ -331,11 +322,6 @@ public class ExportService {
                     log.error(e.getLocalizedMessage(), e);
                 }
             }
-            exit.set(true);
-            running.set(false);
-            session.removeAttribute(Constants.ATTR_NAME_EXIT);
-            session.removeAttribute(Constants.ATTR_NAME_RUNNING);
-            session.removeAttribute(Constants.ATTR_NAME_LOG);
             result_queue.clear(); // 先设置为exit，再清空结果
         }
     }
