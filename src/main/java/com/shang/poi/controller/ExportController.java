@@ -96,8 +96,8 @@ public class ExportController {
             if (byId == null) {
                 throw new RuntimeException("不存在的Id");
             }
-            final AtomicBoolean exit = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_EXIT);
-            if (exit != null && !exit.get()) {
+            final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
+            if (running != null && running.get()) {
                 // 不要这个判断可以让导出在同一个session内并行，但exit一旦为true就会让所有任务结束。
                 throw new RuntimeException("任务正运行");
             }
@@ -139,6 +139,12 @@ public class ExportController {
                 }
                 final AtomicBoolean exit = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_EXIT);
                 exit.set(false);
+                final AtomicBoolean aRunning = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
+                if (aRunning == null) {
+                    session.setAttribute(Constants.ATTR_NAME_RUNNING, new AtomicBoolean(true));
+                }
+                final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
+                running.set(true);
                 CompletableFuture.runAsync(() -> {
                     exportService.export(sseEmitter, exportSqlDTO, exit);
                 }).whenComplete((unused, throwable) -> {
@@ -147,6 +153,7 @@ public class ExportController {
                     }
                     sseEmitter.complete();
                     exit.set(true);
+                    running.set(false);
                 });
             }
             return sseEmitter;
