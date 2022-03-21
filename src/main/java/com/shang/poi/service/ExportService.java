@@ -6,7 +6,6 @@ import com.alibaba.excel.write.builder.ExcelWriterBuilder;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import com.shang.poi.config.TimestampStringConverter;
 import com.shang.poi.dto.ExportSqlDTO;
-import com.shang.poi.model.ConnectionConfig;
 import com.shang.poi.model.Msg;
 import com.shang.poi.pool.JdbcTemplatePool;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +27,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.annotation.Resource;
 import java.io.IOException;
@@ -95,11 +95,11 @@ public class ExportService {
     @Resource
     private StorageService storageService;
 
-    public void export(ExportSqlDTO exportSqlDTO, ConnectionConfig config, AtomicBoolean exit, ArrayBlockingQueue<Msg> logging) {
+    public void export(SseEmitter sseEmitter, ExportSqlDTO exportSqlDTO, AtomicBoolean exit) {
         final ArrayBlockingQueue<List<Map<String, Object>>> result_queue = new ArrayBlockingQueue<>(16);
         final AtomicBoolean queryEnd = new AtomicBoolean(false);
         final String rawSql = StringUtils.trimTrailingCharacter(StringUtils.trimTrailingWhitespace(exportSqlDTO.getSql()), ';');
-        final JdbcTemplate jdbcTemplate = JdbcTemplatePool.get(config.getId());
+        final JdbcTemplate jdbcTemplate = JdbcTemplatePool.get(exportSqlDTO.getId());
 
         final Path exportFile = storageService.generate();
         ExcelWriter writer = null;
@@ -109,11 +109,11 @@ public class ExportService {
             try {
                 statement = CCJSqlParserUtil.parse(rawSql);
                 if (!(statement instanceof Select)) {
-                    enqueue(logging, new Msg(false, "暂时只能处理select"));
+                    sendSse(sseEmitter, new Msg(false, "暂时只能处理select"));
                     throw new RuntimeException("暂时只能处理select");
                 }
             } catch (JSQLParserException e) {
-                enqueue(logging, new Msg(false, "本系统不能处理该SQL语句"));
+                sendSse(sseEmitter, new Msg(false, "本系统不能处理该SQL语句"));
                 throw new RuntimeException("本系统不能处理该SQL语句", e);
             }
             final Select select = (Select) statement;
@@ -124,13 +124,13 @@ public class ExportService {
             if (limit != null) {
                 final LongValue rowCount = limit.getRowCount(LongValue.class);
                 if (rowCount.getValue() > PAGE_SIZE * 10) {
-                    enqueue(logging, new Msg(false, "页大小不能超过" + (PAGE_SIZE * 10)));
+                    sendSse(sseEmitter, new Msg(false, "页大小不能超过" + (PAGE_SIZE * 10)));
                     throw new RuntimeException("页大小不能超过" + (PAGE_SIZE * 10));
                 }
                 // 不分页，直接查
                 POOL.submit(() -> {
                     try {
-                        enqueue(logging, new Msg("SQL:\t\t" + rawSql));
+                        sendSse(sseEmitter, new Msg("SQL:\t\t" + rawSql));
                         final List<Map<String, Object>> list = jdbcTemplate.queryForList(rawSql);
                         result_queue.put(list);
                     } catch (InterruptedException e) {
@@ -146,12 +146,12 @@ public class ExportService {
                 // 修改
                 plainSelect.setSelectItems(COUNT_ONE_ITEMS);
 
-                enqueue(logging, new Msg("SQL:\t\t" + select));
+                sendSse(sseEmitter, new Msg("SQL:\t\t" + select));
                 final Map<String, Object> countMap = jdbcTemplate.queryForMap(select.toString());
                 // 恢复
                 plainSelect.setSelectItems(selectItems);
                 final Long size = (Long) countMap.get(COUNT_ONE);
-                enqueue(logging, new Msg("总数:\t\t" + size));
+                sendSse(sseEmitter, new Msg("总数:\t\t" + size));
                 log.info("总数: {}", size);
                 final long totalPage = totalPage(size);
                 // 分页查
@@ -163,10 +163,10 @@ public class ExportService {
                                 if (exit.get()) {
                                     break;
                                 }
-                                enqueue(logging, new Msg(String.format("查询第\t\t%s页", i + 1)));
+                                sendSse(sseEmitter, new Msg(String.format("查询第\t\t%s页", i + 1)));
                                 log.info("查询第{}页", i + 1);
                                 final String sql = String.format("%s limit %d, %d", rawSql, i * PAGE_SIZE, PAGE_SIZE);
-                                enqueue(logging, new Msg("SQL:\t\t" + sql));
+                                sendSse(sseEmitter, new Msg("SQL:\t\t" + sql));
                                 final List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
                                 result_queue.put(list);
                                 if (list.size() < PAGE_SIZE) {
@@ -222,7 +222,7 @@ public class ExportService {
                                 if (exit.get()) {
                                     break;
                                 }
-                                enqueue(logging, new Msg(String.format("查询第\t\t%s页", i + 1)));
+                                sendSse(sseEmitter, new Msg(String.format("查询第\t\t%s页", i + 1)));
                                 log.info("查询第{}页", i + 1);
                                 if (i > 0) {
                                     // 有where
@@ -235,7 +235,7 @@ public class ExportService {
                                     }
                                 }
                                 final String sql = String.format("%s limit %d, %d", select, 0, PAGE_SIZE);
-                                enqueue(logging, new Msg("SQL:\t\t" + sql));
+                                sendSse(sseEmitter, new Msg("SQL:\t\t" + sql));
                                 final List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
                                 result_queue.put(list);
                                 // FIXME: 2022/1/25 注意可能有size=0的情况
@@ -284,7 +284,7 @@ public class ExportService {
                         sheet = EasyExcel.writerSheet(SHEET_NAME + "_" + total_sheet.get()).sheetNo((int) total_sheet.get() - 1).build();
                         headInitialized.set(true);
                     }
-                    enqueue(logging, new Msg(String.format("写入\t\t%s条数据", result.size())));
+                    sendSse(sseEmitter, new Msg(String.format("写入\t\t%s条数据", result.size())));
                     log.info("写入{}条数据", result.size());
 
                     if (result.size() + total.get() > total_sheet.get() * MAX_ROW) {
@@ -305,7 +305,7 @@ public class ExportService {
                             writer.write(collect, sheet);
                         }
                     }
-                    enqueue(logging, new Msg(String.format("累计写入\t%s条数据", total.get() - totalSheet(total.get()))));
+                    sendSse(sseEmitter, new Msg(String.format("累计写入\t%s条数据", total.get() - totalSheet(total.get()))));
                     log.info("累计写入{}条数据", total.get() - totalSheet(total.get()));
                 }
             }
@@ -317,7 +317,7 @@ public class ExportService {
                 try {
                     writer.finish();
                     Files.move(tempXlsx, exportFile);
-                    enqueue(logging, new Msg(false, "得到文件:\t" + exportFile.getFileName().toString()));
+                    sendSse(sseEmitter, new Msg(false, "得到文件:\t" + exportFile.getFileName().toString()));
                 } catch (Exception e) {
                     log.error(e.getLocalizedMessage(), e);
                 }
@@ -326,11 +326,13 @@ public class ExportService {
         }
     }
 
-    private void enqueue(ArrayBlockingQueue<Msg> queue, Msg msg) {
-        if (queue.remainingCapacity() < 1) {
-            queue.poll();
+    private void sendSse(SseEmitter sseEmitter, Msg msg) {
+        try {
+            sseEmitter.send(msg);
+        } catch (IOException e) {
+            log.error(e.getLocalizedMessage(), e);
+            throw new RuntimeException(e);
         }
-        queue.offer(msg);
     }
 
     private Long totalPage(Long size) {

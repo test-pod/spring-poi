@@ -36,7 +36,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
@@ -47,8 +46,6 @@ import java.util.stream.Collectors;
 @Validated
 @Slf4j
 public class ExportController {
-
-    private static final ReentrantLock LOCK = new ReentrantLock();
 
     // 总共10个线程（导出）
     private static final int EXPORT_THREAD = 10;
@@ -91,39 +88,23 @@ public class ExportController {
                 .body(storageService.loadAsResource(filename));
     }
 
-    @PostMapping("/start")
+    @PostMapping("/post")
     @ResponseBody
-    @SuppressWarnings("unchecked")
-    public void start(HttpSession session, @RequestBody @Valid ExportSqlDTO exportSqlDTO) {
+    public void post(HttpSession session, @RequestBody @Valid ExportSqlDTO exportSqlDTO) {
         synchronized (session) {
-            if (session.getAttribute(Constants.ATTR_NAME_RUNNING) == null) {
-                final AtomicBoolean aExit = new AtomicBoolean(false);
-                final AtomicBoolean aRunning = new AtomicBoolean(false);
-                final ArrayBlockingQueue<Msg> aLogging = new ArrayBlockingQueue<>(1000);
-                session.setAttribute(Constants.ATTR_NAME_EXIT, aExit);
-                session.setAttribute(Constants.ATTR_NAME_RUNNING, aRunning);
-                session.setAttribute(Constants.ATTR_NAME_LOG, aLogging);
+            final ConnectionConfig byId = connectionConfigService.getById(exportSqlDTO.getId());
+            if (byId == null) {
+                throw new RuntimeException("不存在的Id");
             }
             final AtomicBoolean exit = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_EXIT);
-            final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
-            final ArrayBlockingQueue<Msg> logging = (ArrayBlockingQueue<Msg>) session.getAttribute(Constants.ATTR_NAME_LOG);
-            if (!running.get()) {
-                final ConnectionConfig byId = connectionConfigService.getById(exportSqlDTO.getId());
-                if (byId == null) {
-                    throw new RuntimeException("不存在的Id");
-                }
-                CompletableFuture.runAsync(() -> {
-                            running.set(true);
-                            exit.set(false);
-                            exportService.export(exportSqlDTO, byId, exit, logging);
-                        }, POOL)
-                        .whenComplete((unused, throwable) -> {
-                            if (throwable != null) {
-                                log.info(throwable.getLocalizedMessage(), throwable);
-                            }
-                            running.set(false);
-                            exit.set(true);
-                        });
+            if (exit != null && !exit.get()) {
+                // 不要这个判断可以让导出在同一个session内并行，但exit一旦为true就会让所有任务结束。
+                throw new RuntimeException("任务正运行");
+            }
+            if (session.getAttribute(Constants.ATTR_NAME_PARAM) == null) {
+                session.setAttribute(Constants.ATTR_NAME_PARAM, exportSqlDTO);
+            } else {
+                throw new RuntimeException("任务待开始");
             }
         }
     }
@@ -137,50 +118,39 @@ public class ExportController {
         }
     }
 
-    @GetMapping("/sse")
-    @SuppressWarnings("unchecked")
+    @GetMapping("/start")
     public SseEmitter sseEmitter(HttpSession session) {
-        final SseEmitter sseEmitter = new SseEmitter(0L);
-        sseEmitter.onCompletion(() -> {
-            session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
-        });
-        sseEmitter.onError(throwable -> {
-            session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
-            log.error(throwable.getLocalizedMessage(), throwable);
-            sseEmitter.completeWithError(throwable);
-        });
         synchronized (session) {
-            final ArrayBlockingQueue<Msg> logging = (ArrayBlockingQueue<Msg>) session.getAttribute(Constants.ATTR_NAME_LOG);
-            final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
-            if (session.getAttribute(Constants.ATTR_NAME_ONE_CLIENT) == null) {
-                session.setAttribute(Constants.ATTR_NAME_ONE_CLIENT, Constants.ATTR_NAME_ONE_CLIENT);
+            final SseEmitter sseEmitter = new SseEmitter(0L);
+            final ExportSqlDTO exportSqlDTO = (ExportSqlDTO) session.getAttribute(Constants.ATTR_NAME_PARAM);
+            if (exportSqlDTO == null) {
+                try {
+                    sseEmitter.send(new Msg("任务为空或任务已开始"));
+                } catch (IOException e) {
+                    log.error(e.getLocalizedMessage(), e);
+                } finally {
+                    sseEmitter.complete();
+                }
+            } else {
+                session.removeAttribute(Constants.ATTR_NAME_PARAM);
+                final AtomicBoolean aExit = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_EXIT);
+                if (aExit == null) {
+                    session.setAttribute(Constants.ATTR_NAME_EXIT, new AtomicBoolean(false));
+                }
+                final AtomicBoolean exit = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_EXIT);
+                exit.set(false);
                 CompletableFuture.runAsync(() -> {
-                    try {
-                        if (running != null && logging != null) {
-                            while (running.get() || !logging.isEmpty()) {
-                                final Msg msg = logging.poll(5, TimeUnit.SECONDS);
-                                if (msg != null) {
-                                    sseEmitter.send(msg);
-                                }
-                            }
-                        }
-                    } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
+                    exportService.export(sseEmitter, exportSqlDTO, exit);
                 }).whenComplete((unused, throwable) -> {
                     if (throwable != null) {
                         log.error(throwable.getLocalizedMessage(), throwable);
                     }
                     sseEmitter.complete();
-                    logging.clear();
-                    session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
+                    exit.set(true);
                 });
-            } else {
-                sseEmitter.complete();
-                session.removeAttribute(Constants.ATTR_NAME_ONE_CLIENT);
             }
+            return sseEmitter;
         }
-        return sseEmitter;
     }
 
     private void updateFiles(Map<String, Object> map) {

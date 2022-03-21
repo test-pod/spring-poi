@@ -14,12 +14,12 @@
                     data[this.name] = this.value;
                 });
                 $.ajax({
-                    url: "export/start",
+                    url: "export/post",
                     data: JSON.stringify(data),
                     method: "post",
                     contentType: "application/json;charset=UTF-8",
                     success: function () {
-                        const source = new EventSource("export/sse");
+                        const source = new EventSource("export/start");
                         source.onmessage = function (event) {
                             console.log(JSON.parse(event.data));
                             logging.val(logging.val() + JSON.parse(event.data).text + "\n");
@@ -56,7 +56,7 @@
 </head>
 <body>
 <div>
-    <form id="form_export" th:action="@{/export/start}" method="post">
+    <form id="form_export" th:action="@{/export/post}" method="post">
         <div style="padding: 5pt"><span>连接：</span><label>
             <select name="id">
                 <option th:each="connection : ${connections}" th:text="${connection.name}" th:value="${connection.id}"></option>
