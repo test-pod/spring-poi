@@ -31,7 +31,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.annotation.Resource;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -103,7 +102,6 @@ public class ExportService {
 
         final Path exportFile = storageService.generate();
         ExcelWriter writer = null;
-        Path tempXlsx = null;
         try {
             final Statement statement;
             try {
@@ -261,8 +259,7 @@ public class ExportService {
 //            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + fileName);
             final AtomicBoolean headInitialized = new AtomicBoolean(false);
 
-            tempXlsx = Files.createTempFile("spring_poi_", ".xlsx");
-            final ExcelWriterBuilder builder = EasyExcel.write(tempXlsx.toFile()).registerConverter(timestampStringConverter);
+            final ExcelWriterBuilder builder = EasyExcel.write(exportFile.toFile()).registerConverter(timestampStringConverter);
             final AtomicLong total = new AtomicLong(0); // 包含头
             final AtomicLong total_sheet = new AtomicLong(1); // 默认1个
             final AtomicBoolean hasHead = new AtomicBoolean(false); // 默认无
@@ -309,14 +306,13 @@ public class ExportService {
                     log.info("累计写入{}条数据", total.get() - totalSheet(total.get()));
                 }
             }
-        } catch (InterruptedException | IOException e) {
+        } catch (InterruptedException e) {
             log.error(e.getLocalizedMessage(), e);
             throw new RuntimeException(e);
         } finally {
             if (writer != null) {
                 try {
                     writer.finish();
-                    Files.move(tempXlsx, exportFile);
                     sendSse(sseEmitter, new Msg(false, "得到文件:\t" + exportFile.getFileName().toString()));
                 } catch (Exception e) {
                     log.error(e.getLocalizedMessage(), e);
