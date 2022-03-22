@@ -147,7 +147,7 @@ public class ExportController {
                 running.set(true);
                 CompletableFuture.runAsync(() -> {
                     exportService.export(sseEmitter, exportSqlDTO, exit);
-                }).whenComplete((unused, throwable) -> {
+                }, POOL).whenComplete((unused, throwable) -> {
                     if (throwable != null) {
                         log.error(throwable.getLocalizedMessage(), throwable);
                     }
