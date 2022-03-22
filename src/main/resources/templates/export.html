@@ -3,9 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>导出</title>
+    <link type="text/css" rel="stylesheet" th:href="@{/snackbar.css}">
     <script type="application/javascript" th:src="@{/webjars/jquery/3.6.0/jquery.js}"></script>
     <script type="application/javascript">
         $(function () {
+            function toast(text) {
+                let snackbar = $("#snackbar");
+                snackbar.text(text)
+                snackbar.attr("class", "show");
+                setTimeout(function () {
+                    snackbar.attr("class", "");
+                }, 3000);
+            }
             /* 使用button时这个生效 */
             $("#start").click(function () {
                 const data = {};
@@ -31,6 +40,10 @@
                             $("#file-list-div").load("export/fragment");
                             source.close();
                         }
+                    },
+                    error: function (jqXHR) {
+                        console.log(jqXHR.responseJSON.message);
+                        toast(jqXHR.responseJSON.message);
                     }
                 });
                 return false;
@@ -41,7 +54,7 @@
                     method: "post",
                     contentType: "application/json;charset=UTF-8",
                     success: function () {
-                        alert("success");
+                        toast("已停止（内存存量数据会继续写文件）");
                     }
                 });
                 return false;
@@ -85,6 +98,7 @@
             </li>
         </ul>
     </div>
+    <div id="snackbar"></div>
 </div>
 </body>
 </html>
