@@ -12,7 +12,7 @@
                 snackbar.text(text)
                 snackbar.attr("class", "show");
                 setTimeout(function () {
-                    snackbar.attr("class", "");
+                    snackbar.removeAttr("class");
                 }, 3000);
             }
             /* 使用button时这个生效 */
