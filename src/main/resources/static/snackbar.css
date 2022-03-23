@@ -1,5 +1,4 @@
-#snackbar {
-    visibility: hidden;
+.show {
     min-width: 250px;
     /* div自适应水平垂直居中的方法 https://www.cnblogs.com/n2meetu/p/9142602.html */
     transform: translate(-50%, -50%);
@@ -13,9 +12,6 @@
     left: 50%;
     bottom: 30px;
     font-size: 17px;
-}
-
-#snackbar.show {
     visibility: visible;
     -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
     animation: fadein 0.5s, fadeout 0.5s 2.5s;

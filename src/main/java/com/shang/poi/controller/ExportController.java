@@ -4,6 +4,7 @@ import com.shang.poi.common.Constants;
 import com.shang.poi.dto.ExportSqlDTO;
 import com.shang.poi.model.ConnectionConfig;
 import com.shang.poi.model.Msg;
+import com.shang.poi.model.R;
 import com.shang.poi.service.ConnectionConfigService;
 import com.shang.poi.service.ExportService;
 import com.shang.poi.service.StorageService;
@@ -90,32 +91,37 @@ public class ExportController {
 
     @PostMapping("/post")
     @ResponseBody
-    public void post(HttpSession session, @RequestBody @Valid ExportSqlDTO exportSqlDTO) {
+    public R<String> post(HttpSession session, @RequestBody @Valid ExportSqlDTO exportSqlDTO) {
         synchronized (session) {
             final ConnectionConfig byId = connectionConfigService.getById(exportSqlDTO.getId());
             if (byId == null) {
-                throw new RuntimeException("不存在的Id");
+                return R.of(R.Code.NOT_OK, "不存在的Id", null);
             }
             final AtomicBoolean running = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_RUNNING);
             if (running != null && running.get()) {
                 // 不要这个判断可以让导出在同一个session内并行，但exit一旦为true就会让所有任务结束。
-                throw new RuntimeException("任务正运行");
+                return R.of(R.Code.NOT_OK, "任务正运行", null);
             }
             if (session.getAttribute(Constants.ATTR_NAME_PARAM) == null) {
                 session.setAttribute(Constants.ATTR_NAME_PARAM, exportSqlDTO);
             } else {
-                throw new RuntimeException("任务待开始");
+                return R.of(R.Code.NOT_OK, "任务待开始", null);
             }
+            return R.of(R.Code.OK, "参数配置成功", null);
         }
     }
 
     @PostMapping("/stop")
     @ResponseBody
-    public void stop(HttpSession session) {
+    public R<String> stop(HttpSession session) {
         final AtomicBoolean exit = (AtomicBoolean) session.getAttribute(Constants.ATTR_NAME_EXIT);
         if (exit != null) {
-            exit.set(true);
+            if (!exit.get()) {
+                exit.set(true);
+                return R.of(R.Code.OK, "开始停止，等待内存存量数据导出", null);
+            }
         }
+        return R.of(R.Code.NOT_OK, "无待停止的任务", null);
     }
 
     @GetMapping("/start")

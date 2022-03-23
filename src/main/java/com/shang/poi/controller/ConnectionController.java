@@ -4,14 +4,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shang.poi.model.ConnectionConfig;
 import com.shang.poi.model.DatabaseConfig;
+import com.shang.poi.model.R;
 import com.shang.poi.pool.JdbcTemplatePool;
 import com.shang.poi.service.ConnectionConfigService;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -24,7 +25,7 @@ import java.util.Map;
 /**
  * Created by shangwei2009@hotmail.com on 2021/11/24 18:48
  */
-@Controller
+@RestController
 @RequestMapping("/connection")
 public class ConnectionController {
 
@@ -68,14 +69,12 @@ public class ConnectionController {
     }
 
     @GetMapping("/config")
-    @ResponseBody
-    public List<ConnectionConfig> listAll() {
-        return connectionConfigService.listAll();
+    public R<List<ConnectionConfig>> listAll() {
+        return R.of(R.Code.OK, "ok", connectionConfigService.listAll());
     }
 
     @GetMapping("/connect/{id}")
-    @ResponseBody
-    public ConnectionConfig connect(@PathVariable Integer id) throws JsonProcessingException {
+    public R<ConnectionConfig> connect(@PathVariable Integer id) throws JsonProcessingException {
         final ConnectionConfig byId = connectionConfigService.getById(id);
         if (byId == null) {
             throw new RuntimeException("不存在的Id");
@@ -87,12 +86,11 @@ public class ConnectionController {
         connectionConfig.setId(byId.getId());
         connectionConfig.setRunning(byId.getRunning());
         connectionConfigService.update(connectionConfig);
-        return byId;
+        return R.of(R.Code.OK, "ok", byId);
     }
 
     @GetMapping("/disconnect/{id}")
-    @ResponseBody
-    public ConnectionConfig disconnect(@PathVariable Integer id) {
+    public R<ConnectionConfig> disconnect(@PathVariable Integer id) {
         final ConnectionConfig byId = connectionConfigService.getById(id);
         if (byId == null) {
             throw new RuntimeException("不存在的Id");
@@ -103,14 +101,14 @@ public class ConnectionController {
         connectionConfig.setId(byId.getId());
         connectionConfig.setRunning(byId.getRunning());
         connectionConfigService.update(connectionConfig);
-        return byId;
+        return R.of(R.Code.OK, "ok", byId);
     }
 
     @GetMapping("/{id}/check")
     @ResponseBody
-    public List<Map<String, Object>> check(@PathVariable Integer id) {
+    public R<List<Map<String, Object>>> check(@PathVariable Integer id) {
         final JdbcTemplate jdbcTemplate = JdbcTemplatePool.get(id);
-        return jdbcTemplate.queryForList("show databases ");
+        return R.of(R.Code.OK, "ok", jdbcTemplate.queryForList("show databases "));
     }
 
 }

@@ -8,11 +8,12 @@
     <script type="application/javascript">
         $(function () {
             function toast(text) {
-                let snackbar = $("#snackbar");
-                snackbar.text(text)
-                snackbar.attr("class", "show");
+                const toast_time = new Date().getTime();
+                // 内部添加元素
+                let snackbar = $("<div id=\"snackbar-" + toast_time + "\" class=\"show\">"+ text + "</div>");
+                $("#snackbar-list").append(snackbar);
                 setTimeout(function () {
-                    snackbar.removeAttr("class");
+                    snackbar.remove();
                 }, 3000);
             }
             /* 使用button时这个生效 */
@@ -27,18 +28,22 @@
                     data: JSON.stringify(data),
                     method: "post",
                     contentType: "application/json;charset=UTF-8",
-                    success: function () {
-                        const source = new EventSource("export/start");
-                        source.onmessage = function (event) {
-                            console.log(JSON.parse(event.data));
-                            logging.val(logging.val() + JSON.parse(event.data).text + "\n");
-                            // https://stackoverflow.com/questions/8467368/scroll-to-down-in-textarea-with-jquery
-                            if (logging.length)
-                                logging.scrollTop(logging[0].scrollHeight - logging.height());
-                        };
-                        source.onerror = function (event) {
-                            $("#file-list-div").load("export/fragment");
-                            source.close();
+                    success: function (body) {
+                        if (20000 !== body.code) {
+                            toast(body.message);
+                        } else {
+                            const source = new EventSource("export/start");
+                            source.onmessage = function (event) {
+                                console.log(JSON.parse(event.data));
+                                logging.val(logging.val() + JSON.parse(event.data).text + "\n");
+                                // https://stackoverflow.com/questions/8467368/scroll-to-down-in-textarea-with-jquery
+                                if (logging.length)
+                                    logging.scrollTop(logging[0].scrollHeight - logging.height());
+                            };
+                            source.onerror = function (event) {
+                                $("#file-list-div").load("export/fragment");
+                                source.close();
+                            }
                         }
                     },
                     error: function (jqXHR) {
@@ -53,8 +58,12 @@
                     url: "export/stop",
                     method: "post",
                     contentType: "application/json;charset=UTF-8",
-                    success: function () {
-                        toast("已停止（内存存量数据会继续写文件）");
+                    success: function (body) {
+                        toast(body.message);
+                    },
+                    error: function (jqXHR) {
+                        console.log(jqXHR.responseJSON.message);
+                        toast(jqXHR.responseJSON.message);
                     }
                 });
                 return false;
@@ -98,7 +107,7 @@
             </li>
         </ul>
     </div>
-    <div id="snackbar"></div>
+    <div id="snackbar-list"></div>
 </div>
 </body>
 </html>
