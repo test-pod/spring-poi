@@ -1,6 +1,5 @@
 package com.shang.poi.model;
 
-import lombok.Builder;
 import lombok.Data;
 
 import javax.validation.constraints.NotEmpty;
@@ -10,7 +9,6 @@ import javax.validation.constraints.Pattern;
  * Created by shangwei2009@hotmail.com on 2021/11/25 20:14
  */
 @Data
-@Builder
 public class DatabaseConfig {
 
     /**
