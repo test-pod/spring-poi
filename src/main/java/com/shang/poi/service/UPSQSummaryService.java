@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageInfo;
 import com.shang.poi.config.PoiProperties;
+import com.shang.poi.model.Count;
 import com.shang.poi.model.Issue;
 import com.shang.poi.model.MockResultPlayBack;
 import org.springframework.stereotype.Service;
@@ -50,7 +51,7 @@ public class UPSQSummaryService {
             try {
                 final AtomicLong id = new AtomicLong(0);
                 do {
-                    final PageInfo<MockResultPlayBack> pageInfo = mockResultPlayBackService.listByBatchNoAndId(poiProperties.getBatchNo(), id.get(), poiProperties.getPageSize());
+                    final PageInfo<MockResultPlayBack> pageInfo = mockResultPlayBackService.listQByBatchNoAndId(poiProperties.getBatchNo(), id.get(), poiProperties.getPageSize());
                     final List<MockResultPlayBack> mockResultPlayBacks = pageInfo.getList();
                     RESULT_QUEUE.put(mockResultPlayBacks);
                     id.set(mockResultPlayBacks.isEmpty() ? Long.MAX_VALUE : mockResultPlayBacks.get(mockResultPlayBacks.size() - 1).getId());
@@ -64,7 +65,7 @@ public class UPSQSummaryService {
             try {
 //                    final ExcelWriter writer = EasyExcel.write(Paths.get(poiProperties.getExportFile()).toFile(), MockResultPlayBackVo.class).build();
 //                    final WriteSheet sheet = EasyExcel.writerSheet(SHEET_NAME).build();
-                final HashMap<Issue, Long> map = new HashMap<>();
+                final HashMap<Issue, Count> map = new HashMap<>();
                 while (hasNextPage.get() || !RESULT_QUEUE.isEmpty()) {
                     final List<?> result = RESULT_QUEUE.poll(5, TimeUnit.SECONDS);
                     if (result != null) {
@@ -79,18 +80,15 @@ public class UPSQSummaryService {
                                     if (matcher1.find()) {
                                         final String group = matcher1.group(1);
                                         final Issue issue = new Issue(group, Issue.Type.DIFFERENT);
-                                        map.computeIfPresent(issue, (key, value) -> value + 1L);
-                                        map.computeIfAbsent(issue, key -> 1L);
+                                        updateMap(map, issue, ((MockResultPlayBack) o));
                                     } else if (matcher2.find()) {
                                         final String group = matcher2.group(1);
                                         final Issue issue = new Issue(group, Issue.Type.UNNECESSARY);
-                                        map.computeIfPresent(issue, (key, value) -> value + 1L);
-                                        map.computeIfAbsent(issue, key -> 1L);
+                                        updateMap(map, issue, ((MockResultPlayBack) o));
                                     } else if (matcher3.find()) {
                                         final String group = matcher3.group(1);
                                         final Issue issue = new Issue(group, Issue.Type.MISSING);
-                                        map.computeIfPresent(issue, (key, value) -> value + 1L);
-                                        map.computeIfAbsent(issue, key -> 1L);
+                                        updateMap(map, issue, ((MockResultPlayBack) o));
                                     }
                                 }
                             }
@@ -106,6 +104,23 @@ public class UPSQSummaryService {
             }
         }).start();
         finish.await();
-        System.exit(0);
+    }
+
+    private void updateMap(HashMap<Issue, Count> map, Issue issue, MockResultPlayBack mockResultPlayBack) {
+        final String findKey = mockResultPlayBack.getFindKey();
+        final String resultComment = mockResultPlayBack.getResultComment();
+        map.computeIfPresent(issue, (k, v) -> {
+            v.setCount(v.getCount() + 1);
+            v.addFindKey(findKey);
+            v.addResultComment(resultComment);
+            return v;
+        });
+        map.computeIfAbsent(issue, k -> {
+            final Count count = new Count();
+            count.setCount(1);
+            count.addFindKey(findKey);
+            count.addResultComment(resultComment);
+            return count;
+        });
     }
 }

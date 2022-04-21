@@ -29,26 +29,26 @@ public class MockResultPlayBackService {
         return PageInfo.of(mockResultPlayBacks);
     }
 
-/*    public PageInfo<MockResultPlayBack> listByBatchNoAndId(String batchNo, Long id, Integer pageSize) {
+    public PageInfo<MockResultPlayBack> listQByBatchNoAndId(String batchNo, Long id, Integer pageSize) {
         PageHelper.startPage(1, pageSize);
         final Example example = new Example(MockResultPlayBack.class);
         example.createCriteria()
-                .andEqualTo("batchNo", batchNo)
+//                .andEqualTo("batchNo", batchNo)
                 .andEqualTo("msgOut1LineName", "NETPAY")
                 .andGreaterThan("id", id)
-                .andLessThan("id", 7039576L);
+                .andLessThan("id", 8588640L);
         example.orderBy("id").asc();
         return PageInfo.of(mockResultPlayBackMapper.selectByExample(example));
-    }*/
+    }
 
-    public PageInfo<MockResultPlayBack> listByBatchNoAndId(String batchNo, Long id, Integer pageSize) {
+    public PageInfo<MockResultPlayBack> listCByBatchNoAndId(String batchNo, Long id, Integer pageSize) {
         PageHelper.startPage(1, pageSize);
         final Example example = new Example(MockResultPlayBack.class);
         example.createCriteria()
-                .andEqualTo("batchNo", batchNo)
+//                .andEqualTo("batchNo", batchNo)
                 .andIn("msgOut1LineName", Arrays.asList("CUPA", "CUPS"))
                 .andGreaterThan("id", id)
-                .andLessThan("id", 11595270L);
+                .andLessThan("id", 8588640L);
         example.orderBy("id").asc();
         return PageInfo.of(mockResultPlayBackMapper.selectByExample(example));
     }

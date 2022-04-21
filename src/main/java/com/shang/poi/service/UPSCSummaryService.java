@@ -51,9 +51,9 @@ public class UPSCSummaryService {
         final AtomicBoolean hasNextPage = new AtomicBoolean(true);
         new Thread(() -> {
             try {
-                final AtomicLong id = new AtomicLong(11423003L);
+                final AtomicLong id = new AtomicLong(0L);
                 do {
-                    final PageInfo<MockResultPlayBack> pageInfo = mockResultPlayBackService.listByBatchNoAndId(poiProperties.getBatchNo(), id.get(), poiProperties.getPageSize());
+                    final PageInfo<MockResultPlayBack> pageInfo = mockResultPlayBackService.listCByBatchNoAndId(poiProperties.getBatchNo(), id.get(), poiProperties.getPageSize());
                     final List<MockResultPlayBack> mockResultPlayBacks = pageInfo.getList();
                     RESULT_QUEUE.put(mockResultPlayBacks);
                     id.set(mockResultPlayBacks.isEmpty() ? Long.MAX_VALUE : mockResultPlayBacks.get(mockResultPlayBacks.size() - 1).getId());
@@ -107,7 +107,6 @@ public class UPSCSummaryService {
             }
         }).start();
         finish.await();
-        System.exit(0);
     }
 
     private void updateMap(HashMap<Issue, Count> map, Issue issue, MockResultPlayBack mockResultPlayBack) {

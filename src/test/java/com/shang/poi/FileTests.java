@@ -1,11 +1,18 @@
 package com.shang.poi;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shang.poi.common.FileNameComparator;
+import com.shang.poi.model.Count;
 import com.sun.nio.file.SensitivityWatchEventModifier;
 import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.util.Files;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
@@ -14,6 +21,8 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
@@ -22,6 +31,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by shangwei2009@hotmail.com on 2022/3/17 16:14
@@ -91,5 +101,15 @@ public class FileTests {
         }).start();
         final CountDownLatch latch = new CountDownLatch(1);
         latch.await();
+    }
+
+    @Test
+    public void test04() throws JsonProcessingException {
+        final String content = Files.contentOf(new File("C:\\Users\\Shang\\桌面\\报文回放\\4.6~4.8.CUP.json"), StandardCharsets.UTF_8);
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final HashMap<String, Count> map = objectMapper.readValue(content, new TypeReference<HashMap<String, Count>>() {
+        });
+        final Set<String> findKeys = map.values().stream().flatMap(count -> count.getFindKeys().stream()).collect(Collectors.toSet());
+        System.out.println(findKeys.stream().collect(Collectors.joining("', '", "('", "')")));
     }
 }
